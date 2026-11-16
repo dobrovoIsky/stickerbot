@@ -87,10 +87,16 @@ async def main():
     # 2. Initialize Database
     await init_db()
 
-    # 3. Start Render HTTP health server if PORT is set
+    # 3. Pre-warm background removal AI model
+    logger.info("Pre-warming background remover model...")
+    from services.background_remover import get_session
+    await asyncio.to_thread(get_session)
+    logger.info("Background remover model ready in memory!")
+
+    # 4. Start Render HTTP health server if PORT is set
     health_runner = await start_health_server()
 
-    # 4. Initialize Bot & Dispatcher
+    # 5. Initialize Bot & Dispatcher
     bot = Bot(
         token=config.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
