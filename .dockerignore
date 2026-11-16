@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+database/bot.db
+database/*.db
+temp/*
+!temp/.gitkeep
+.git/
+.gitignore
+.dockerignore
+README.md

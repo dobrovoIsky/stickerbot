@@ -1,0 +1,23 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables & secrets
+.env
+
+# Database
+database/*.db
+database/*.db-wal
+database/*.db-shm
+
+# Temporary files
+temp/*
+!temp/.gitkeep
+
+# OS generated
+.DS_Store
+Thumbs.db
