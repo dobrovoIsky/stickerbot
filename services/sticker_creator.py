@@ -23,10 +23,12 @@ async def process_sticker_image(
     """
     # 1. Background removal if requested
     if remove_bg:
-        processed_bytes = await remove_background(image_bytes)
-        img = Image.open(io.BytesIO(processed_bytes)).convert("RGBA")
+        img = await remove_background(image_bytes)
     else:
-        img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+        from PIL import ImageOps
+        img = Image.open(io.BytesIO(image_bytes))
+        img = ImageOps.exif_transpose(img)
+        img = img.convert("RGBA")
 
     # 2. Add outline if requested and background was removed
     if add_outline and remove_bg:
