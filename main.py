@@ -46,12 +46,9 @@ async def set_bot_commands(bot: Bot):
 
 async def start_health_server():
     """
-    Starts a lightweight HTTP server if $PORT is set (required by Render.com Web Services).
+    Starts a lightweight HTTP server on $PORT (defaults to 10000 for Render Web Services).
     """
-    port_str = os.getenv("PORT")
-    if not port_str:
-        return None
-
+    port_str = os.getenv("PORT", "10000")
     try:
         port = int(port_str)
         app = web.Application()

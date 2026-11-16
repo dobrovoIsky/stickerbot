@@ -3,6 +3,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV NUMBA_CACHE_DIR=/tmp/numba_cache
+ENV PORT=10000
+EXPOSE 10000
 
 # Install system dependencies required by OpenCV, Pillow, and rembg
 RUN apt-get update && apt-get install -y --no-install-recommends \
