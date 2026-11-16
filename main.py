@@ -75,26 +75,29 @@ async def start_health_server():
 async def main():
     logger.info("Starting Sticker Factory Bot...")
 
+    # 1. Start Render HTTP health server FIRST so deploy never times out
+    health_runner = await start_health_server()
+
     if config.BOT_TOKEN == "YOUR_BOT_TOKEN_HERE" or not config.BOT_TOKEN:
         logger.error(
             "⚠️ BOT_TOKEN is not set! Please edit your .env file or environment variables and set your Telegram bot token."
         )
         return
 
-    # 1. Clean temp directory
+    # 2. Clean temp directory
     cleanup_temp_dir()
 
-    # 2. Initialize Database
+    # 3. Initialize Database
     await init_db()
 
-    # 3. Pre-warm background removal AI model
+    # 4. Pre-warm background removal AI model
     logger.info("Pre-warming background remover model...")
-    from services.background_remover import get_session
-    await asyncio.to_thread(get_session)
-    logger.info("Background remover model ready in memory!")
-
-    # 4. Start Render HTTP health server if PORT is set
-    health_runner = await start_health_server()
+    try:
+        from services.background_remover import get_session
+        await asyncio.to_thread(get_session)
+        logger.info("Background remover model ready in memory!")
+    except Exception as e:
+        logger.warning(f"Background remover pre-warm skipped or failed: {e}")
 
     # 5. Initialize Bot & Dispatcher
     bot = Bot(
