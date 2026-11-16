@@ -3,6 +3,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV NUMBA_CACHE_DIR=/tmp/numba_cache
+ENV U2NET_HOME=/app/models
+ENV REMBG_HOME=/app/models
 ENV PORT=10000
 EXPOSE 10000
 
@@ -20,8 +22,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Attempt to pre-cache the u2netp model; if network hiccups, do not fail the build
-RUN python -c "from rembg import new_session; new_session('u2netp')" || true
+# Pre-cache u2netp into /app/models with global read permissions
+RUN mkdir -p /app/models && python -c "from rembg import new_session; new_session('u2netp')" && chmod -R 777 /app/models || true
 
 # Copy project files
 COPY . .

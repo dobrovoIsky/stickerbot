@@ -87,14 +87,17 @@ async def main():
     # 3. Initialize Database
     await init_db()
 
-    # 4. Pre-warm background removal AI model
-    logger.info("Pre-warming background remover model...")
-    try:
-        from services.background_remover import get_session
-        await asyncio.to_thread(get_session)
-        logger.info("Background remover model ready in memory!")
-    except Exception as e:
-        logger.warning(f"Background remover pre-warm skipped or failed: {e}")
+    # 4. Pre-warm background removal AI model in background (NEVER BLOCK POLLING)
+    async def async_prewarm():
+        try:
+            logger.info("Pre-warming background remover model in background...")
+            from services.background_remover import get_session
+            await asyncio.to_thread(get_session)
+            logger.info("Background remover model ready in memory!")
+        except Exception as e:
+            logger.warning(f"Background remover pre-warm skipped or failed: {e}")
+
+    asyncio.create_task(async_prewarm())
 
     # 5. Initialize Bot & Dispatcher
     bot = Bot(
