@@ -86,10 +86,12 @@ async def download_image(message: Message) -> bytes | None:
 @router.message(F.photo | (F.document & F.document.mime_type.startswith("image/")))
 async def handle_incoming_photo(message: Message, state: FSMContext):
     user_id = message.from_user.id
+    logger.info(f"📸 Incoming photo from user {user_id}")
 
     # 1. Check subscriptions dynamically before image processing
     is_sub, missing = await check_user_subscriptions(message.bot, user_id)
     if not is_sub:
+        logger.info(f"User {user_id} is not subscribed to required channels")
         await message.answer(
             "⚠️ <b>Для створення стікерів необхідно підписатися на канали партнерів:</b>",
             reply_markup=get_subscription_keyboard(missing),
@@ -104,12 +106,13 @@ async def handle_incoming_photo(message: Message, state: FSMContext):
         await status_msg.edit_text("❌ Не вдалося отримати зображення. Спробуй надіслати інше фото.")
         return
 
+    logger.info(f"Photo downloaded for user {user_id}, size: {len(raw_bytes)} bytes")
+
     state_data = await state.get_data()
     caption_text = message.caption or state_data.get("sticker_text")
 
     # If user selected "Стікер із текстом" but provided no caption, ask for text
     if state_data.get("with_text") and not caption_text:
-        # Save raw bytes to temp file
         temp_filename = f"raw_{uuid.uuid4().hex}.png"
         temp_path = os.path.join(config.TEMP_DIR, temp_filename)
         with open(temp_path, "wb") as f:
@@ -121,7 +124,10 @@ async def handle_incoming_photo(message: Message, state: FSMContext):
             remove_bg=True
         )
         await state.set_state(StickerStates.waiting_for_text)
-        await status_msg.delete()
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass
         await message.answer(
             "💬 <b>Фото отримано! Тепер напиши текст</b>, який хочеш бачити на стікері:",
             reply_markup=get_cancel_keyboard(),
@@ -134,13 +140,24 @@ async def handle_incoming_photo(message: Message, state: FSMContext):
     remove_bg = True
 
     try:
-        await status_msg.edit_text("✨ <b>Видаляю фон та оптимізую розмір...</b>", parse_mode="HTML")
+        try:
+            await status_msg.edit_text("✨ <b>Видаляю фон та оптимізую розмір...</b>", parse_mode="HTML")
+        except Exception:
+            pass
+
+        import time
+        t_start = time.time()
+        logger.info(f"Starting process_sticker_image for user {user_id}...")
+
         webp_bytes = await process_sticker_image(
             image_bytes=raw_bytes,
             remove_bg=remove_bg,
             add_outline=has_outline,
             text=caption_text
         )
+
+        elapsed = time.time() - t_start
+        logger.info(f"process_sticker_image finished in {elapsed:.2f}s, output webp size: {len(webp_bytes)} bytes")
 
         # Save raw and processed sticker to temp directory
         unique_id = uuid.uuid4().hex
@@ -152,11 +169,16 @@ async def handle_incoming_photo(message: Message, state: FSMContext):
         with open(webp_path, "wb") as f:
             f.write(webp_bytes)
 
-        await status_msg.delete()
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass
 
         # Send sticker to user
+        logger.info(f"Sending sticker to user {user_id}...")
         sticker_file = BufferedInputFile(webp_bytes, filename="sticker.webp")
         sent_sticker = await message.answer_sticker(sticker=sticker_file)
+        logger.info(f"Sticker delivered successfully to user {user_id}!")
 
         # Store in FSM
         await state.set_state(StickerStates.preview_mode)
@@ -192,7 +214,11 @@ async def handle_incoming_photo(message: Message, state: FSMContext):
 
     except Exception as e:
         logger.exception(f"Error processing sticker: {e}")
-        await status_msg.edit_text("❌ Виникла помилка під час обробки фото. Будь ласка, спробуй інше фото.")
+        escaped_err = html.escape(str(e))
+        try:
+            await status_msg.edit_text(f"❌ Помилка обробки: <code>{escaped_err}</code>", parse_mode="HTML")
+        except Exception:
+            await message.answer(f"❌ Помилка обробки: <code>{escaped_err}</code>", parse_mode="HTML")
 
 @router.message(StickerStates.waiting_for_text)
 async def handle_text_input(message: Message, state: FSMContext):

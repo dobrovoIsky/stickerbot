@@ -17,7 +17,7 @@ def get_session():
             
             # Configure ONNX session options for low CPU usage
             opts = ort.SessionOptions()
-            opts.intra_op_num_threads = 2
+            opts.intra_op_num_threads = 1
             opts.inter_op_num_threads = 1
             opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
             
